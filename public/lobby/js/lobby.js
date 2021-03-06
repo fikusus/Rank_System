@@ -1,24 +1,45 @@
 let cookie = document.cookie;
 let key = getCookie("session");
 if (key) {
-  $.ajax({
-    global: false,
-    type: "POST",
-    url: "/chekUserSession",
-    dataType: "json",
-    data: {
+  sendRequest(
+    "chekUserSession",
+    {
       key: key,
     },
-    success: function (result) {
-      document.getElementById(
-        "user-info"
-      ).innerHTML = `Hello ${result.login}!<br>`;
+    function (result) {
+      if (result.error && !result.login) {
+        document.cookie = "session=;path=/";
+        window.location.replace("/");
+      } else {
+        document.getElementById(
+          "user-info"
+        ).innerHTML = `Hello ${result.login}!<br>`;
+
+        updateGamesTable();
+      }
+
       console.log(result);
+    }
+  );
+
+  sendRequest(
+    "getgameslist",
+    {
+      key: key,
     },
-    error: function (request, status, error) {
-      console.log(error);
-    },
-  });
+    function (result) {
+      if (result.error && !result.login) {
+        document.cookie = "session=;path=/";
+        window.location.replace("/");
+      } else {
+        document.getElementById(
+          "user-info"
+        ).innerHTML = `Hello ${result.login}!<br>`;
+      }
+
+      console.log(result);
+    }
+  );
 } else {
   window.location.replace("/");
 }
@@ -42,25 +63,65 @@ function getCookie(cname) {
 $("#create_game").click(function () {
   let gameName = document.getElementById("game_name_input").value;
   if (gameName !== "") {
-    $.ajax({
-      global: false,
-      type: "POST",
-      url: "/insertGame",
-      dataType: "json",
-      data: {
+    sendRequest(
+      "insertGame",
+      {
         key: key,
-        name:gameName
+        name: gameName,
       },
-      success: function (result) {
-        document.getElementById(
-          "user-info"
-        ).innerHTML = `Hello ${result.login}!<br>`;
+      function (result) {
+        updateGamesTable();
         console.log(result);
-      },
-      error: function (request, status, error) {
-        console.log(error);
-      },
-    });
+      }
+    );
   }
 });
 console.log(key);
+
+function sendRequest(adrees, data, callback) {
+  $.ajax({
+    global: false,
+    type: "POST",
+    url: `/${adrees}`,
+    dataType: "json",
+    data: data,
+    success: function (result) {
+      return callback(result);
+    },
+    error: function (request, status, error) {
+      console.log(error);
+    },
+  });
+}
+
+function updateGamesTable() {
+  sendRequest(
+    "getgameslist",
+    {
+      key: key,
+    },
+    function (result) {
+      if (result.length === 0) {
+        document.getElementById("gamelist").innerHTML = "<p>Тут ничего нет</p>";
+      } else {
+        let out = `<table id="customers">
+        <tr>
+          <th>Name</th>
+          <th>ID</th>
+          <th>Action</th>
+        </tr>`;
+        for (let i = 0; i < result.length; i++) {
+          out += `<tr>`;
+          out += `    <td>${result[i].name}</td>
+          <td>${result[i].id}</td>
+          <td></td>`;
+          out += `</tr>`;
+        }
+        out += `</table>`;
+        document.getElementById("gamelist").innerHTML = out;
+      }
+
+      console.log(result);
+    }
+  );
+}
