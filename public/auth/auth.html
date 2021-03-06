@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="../../public/auth/styles/style.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Login in</h1>
+      <hr />
+      <p id="error_msg" style="color: red"></p>
+
+      <label for="login"><b>Login</b></label>
+      <input
+        type="text"
+        id="login"
+        placeholder="Enter Login"
+        name="login"
+        required
+      />
+
+      <label for="psw"><b>Password</b></label>
+      <input
+        type="password"
+        id="password"
+        placeholder="Enter Password"
+        name="psw"
+        required
+      />
+
+      <hr />
+      <button id="regbutton" class="registerbtn">Login in</button>
+    </div>
+    <script src="../../public/auth/js/auth.js"></script>
+  </body>
+</html>
