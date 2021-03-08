@@ -13,8 +13,8 @@ const key = "dimatohadanil";
 connection.connect();
 
 let sql = {
-  auth: (login, password, callback) => {
-    var sql = `SELECT sessionkey FROM users WHERE login = '${login}' AND password = '${CryptoJS.HmacSHA256(
+  auth: (login, password, tablename ,callback) => {
+    var sql = `SELECT sessionkey FROM ${tablename} WHERE login = '${login}' AND password = '${CryptoJS.HmacSHA256(
       password,
       key
     )}' ;`;
@@ -32,14 +32,14 @@ let sql = {
     });
   },
 
-  register: (login, password, callback) => {
-    let sql_find_user = `SELECT COUNT(*) as solution FROM users where login = '${login}';`;
-    let sql_insert_user = `INSERT INTO users (login, password, sessionkey) values ('${login}', '${CryptoJS.HmacSHA256(
+  register: (login, password, tablename,  callback) => {
+    let sql_find_user = `SELECT COUNT(*) as solution FROM ${tablename} where login = '${login}';`;
+    let sql_insert_user = `INSERT INTO ${tablename} (login, password, sessionkey) values ('${login}', '${CryptoJS.HmacSHA256(
       password,
       key
     )}', '${CryptoJS.HmacSHA256(login, key)}')`;
 
-    let sql_create_user_table = `CREATE TABLE users (
+    let sql_create_user_table = `CREATE TABLE ${tablename} (
         sessionkey VARCHAR(128) UNIQUE,
         login VARCHAR(30) PRIMARY KEY,
         password VARCHAR(128) NOT NULL,
@@ -95,6 +95,18 @@ let sql = {
         return callback(SQLErrorMgs, null);
       } else {
         return callback(null, results[0]);
+      }
+    });
+  },
+
+  getGameByKey: (id, callback) => {
+    var sql = `SELECT *  FROM games WHERE id = '${id}';`;
+
+    connection.query(sql, function (error, results) {
+      if (error || !results[0]) {
+        return callback(SQLErrorMgs, null);
+      } else {
+        return callback(null, "OK");
       }
     });
   },
@@ -156,6 +168,19 @@ let sql = {
 
   getGameList: (login, callback) => {
     var sql = `SELECT name, id  FROM games WHERE login = '${login}';`;
+
+    connection.query(sql, function (error, results) {
+      if (error) {
+        return callback(SQLErrorMgs, null);
+      } else {
+        return callback(null, results);
+      }
+    });
+  },
+
+
+  getGameIdsList: (callback) => {
+    var sql = `SELECT  id  FROM games;`;
 
     connection.query(sql, function (error, results) {
       if (error) {
