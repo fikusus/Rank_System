@@ -9,7 +9,8 @@ var connection = mysql.createConnection({
 
 let SQLErrorMgs = "Ошибка, поробуйте позже";
 
-const key = "dimatohadanil";
+const config = require('config');
+const key =  config.get("key");
 
 connection.connect();
 
@@ -64,7 +65,7 @@ let sql = {
                     if (error) {
                       return callback(SQLErrorMgs, null);
                     } else {
-                      callback(null, "OK");
+                      return callback(null, "OK");
                     }
                   }
                 );
@@ -221,13 +222,14 @@ let sql = {
     var sql = `SELECT ${base} FROM ${gameKey} WHERE sessionkey = '${sessionKey}'`;
 
     connection.query(sql, function (error, results) {
+      console.log(results);
       if (error && !results) {
         return callback(SQLErrorMgs, null);
       } else {
         if (results[0][base]) {
             return callback(null, results[0][base]);
         } else {
-          return callback(SQLErrorMgs, null);
+          return callback(null, null);
         }
       }
     });
