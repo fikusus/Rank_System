@@ -1,9 +1,10 @@
 var CryptoJS = require("crypto-js");
 var mysql = require("mysql");
 var connection = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  database: "test",
+  host     : '79.133.98.96',
+  user     : 'danil',
+  password : 'sayonara',
+  database : 'test'
 });
 
 let SQLErrorMgs = "Ошибка, поробуйте позже";
@@ -41,7 +42,7 @@ let sql = {
 
     let sql_create_user_table = `CREATE TABLE ${tablename} (
         sessionkey VARCHAR(128) UNIQUE,
-        login VARCHAR(30) PRIMARY KEY,
+        login VARCHAR(128) PRIMARY KEY,
         password VARCHAR(128) NOT NULL,
         const_params JSON,
         params JSON
@@ -120,9 +121,9 @@ let sql = {
     )}')`;
 
     let sql_create_game_table = `CREATE TABLE games (
-      login VARCHAR(30),
-      name VARCHAR(30),
-      id VARCHAR(30) PRIMARY KEY,
+      login VARCHAR(128),
+      name VARCHAR(128),
+      id VARCHAR(128) PRIMARY KEY,
       CONSTRAINT UC_Person UNIQUE (login,name)
   )`;
     connection.query(sql_find_game, function (error, results, fields) {
@@ -151,11 +152,12 @@ let sql = {
           return callback(SQLErrorMgs, null);
         }
       } else {
-        console.log(results);
+
         if (results[0].solution === 1) {
           callback("Имя  занято", null);
         } else {
           connection.query(sql_insert_game, function (error, results, fields) {
+            console.log(error);
             if (error) {
               return callback(SQLErrorMgs, null);
             } else {
