@@ -55,6 +55,7 @@ app.post("/register", async (req, res) => {
       req.body.login,
       req.body.password,
       "users",
+      null,
       function (error, result) {
         if (error) {
           res.send(`{"error":"${error}"}`);
@@ -97,6 +98,7 @@ app.post("/insertGame", async (req, res) => {
         res.send(`{"error":"${error}"}`);
       } else {
         sql.inesertGame(results.login, req.body.name, function (error, result) {
+
           if (error) {
             res.send(`{"error":"${error}"}`);
           } else {
@@ -162,20 +164,27 @@ function checkGameKey(gameKey, callback){
 }
 
 app.post("/registerClient", async (req, res) => {
-  if (req.body.gameKey) {
-    checkGameKey(req.body.gameKey,function(result){
+  regData = req.body[0];
+  userData = req.body[1];
+  console.log(req.body);
+  if (regData.gameKey) {
+    checkGameKey(regData.gameKey,function(result){
       if(result){
         if (
-          req.body.login &&
-          req.body.login !== "" &&
-          req.body.password !== null &&
-          req.body.password
+          regData.login &&
+          regData.login !== "" &&
+          regData.password !== null &&
+          regData.password
         ) {
-          sql.register(req.body.login, req.body.password, req.body.gameKey,function(error, result){
+          let ud = null;
+          if(userData){
+            ud = `'${JSON.stringify(userData)}'`;
+          }
+          sql.register(regData.login, regData.password, regData.gameKey,ud,function(error, result){
             if (error) {
               res.send(`{"error":"${error}"}`);
             } else {
-              res.send(`{"result":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
+              res.send(`{"result":"${CryptoJS.HmacSHA256(regData.login, key)}"}`);
             }
           })
         }else{

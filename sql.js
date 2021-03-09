@@ -33,12 +33,14 @@ let sql = {
     });
   },
 
-  register: (login, password, tablename, callback) => {
+  register: (login, password, tablename,userData, callback) => {
     let sql_find_user = `SELECT COUNT(*) as solution FROM ${tablename} where login = '${login}';`;
-    let sql_insert_user = `INSERT INTO ${tablename} (login, password, sessionkey) values ('${login}', '${CryptoJS.HmacSHA256(
+    let sql_insert_user = `INSERT INTO ${tablename} (login, password, sessionkey, const_params) values ('${login}', '${CryptoJS.HmacSHA256(
       password,
       key
-    )}', '${CryptoJS.HmacSHA256(login, key)}')`;
+    )}', '${CryptoJS.HmacSHA256(login, key)}', ${userData})`;
+
+      console.log(sql_insert_user);
 
     let sql_create_user_table = `CREATE TABLE ${tablename} (
         sessionkey VARCHAR(128) UNIQUE,
