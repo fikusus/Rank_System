@@ -13,7 +13,7 @@ const key = "dimatohadanil";
 connection.connect();
 
 let sql = {
-  auth: (login, password, tablename ,callback) => {
+  auth: (login, password, tablename, callback) => {
     var sql = `SELECT sessionkey FROM ${tablename} WHERE login = '${login}' AND password = '${CryptoJS.HmacSHA256(
       password,
       key
@@ -32,7 +32,7 @@ let sql = {
     });
   },
 
-  register: (login, password, tablename,  callback) => {
+  register: (login, password, tablename, callback) => {
     let sql_find_user = `SELECT COUNT(*) as solution FROM ${tablename} where login = '${login}';`;
     let sql_insert_user = `INSERT INTO ${tablename} (login, password, sessionkey) values ('${login}', '${CryptoJS.HmacSHA256(
       password,
@@ -43,6 +43,7 @@ let sql = {
         sessionkey VARCHAR(128) UNIQUE,
         login VARCHAR(30) PRIMARY KEY,
         password VARCHAR(128) NOT NULL,
+        const_params JSON,
         params JSON
     )`;
     connection.query(sql_find_user, function (error, results, fields) {
@@ -178,7 +179,6 @@ let sql = {
     });
   },
 
-
   getGameIdsList: (callback) => {
     var sql = `SELECT  id  FROM games;`;
 
@@ -190,6 +190,45 @@ let sql = {
       }
     });
   },
+
+  insertPlayerData: (gameKey, sessionKey, data, callback) => {
+    var sql = `UPDATE ${gameKey} SET params = '${JSON.stringify(
+      data
+    )}' WHERE sessionkey = '${sessionKey}'`;
+
+    connection.query(sql, function (error, results) {
+      if (error) {
+        return callback(SQLErrorMgs, null);
+      } else {
+        if (results) {
+          if (results.affectedRows === 1) {
+            return callback(null, "OK");
+          } else {
+            return callback("Пользователь не найден", null);
+          }
+        } else {
+          return callback(SQLErrorMgs, null);
+        }
+      }
+    });
+  },
+
+  getPlayerData: (gameKey, sessionKey, base, callback) => {
+    var sql = `SELECT ${base} FROM ${gameKey} WHERE sessionkey = '${sessionKey}'`;
+
+    connection.query(sql, function (error, results) {
+      if (error && !results) {
+        return callback(SQLErrorMgs, null);
+      } else {
+        if (results[0][base]) {
+            return callback(null, results[0][base]);
+        } else {
+          return callback(SQLErrorMgs, null);
+        }
+      }
+    });
+  },
+
 };
 
 module.exports = sql;

@@ -21,25 +21,6 @@ if (key) {
       console.log(result);
     }
   );
-
-  sendRequest(
-    "getgameslist",
-    {
-      key: key,
-    },
-    function (result) {
-      if (result.error && !result.login) {
-        document.cookie = "session=;path=/";
-        window.location.replace("/");
-      } else {
-        document.getElementById(
-          "user-info"
-        ).innerHTML = `Hello ${result.login}!<br>`;
-      }
-
-      console.log(result);
-    }
-  );
 } else {
   window.location.replace("/");
 }
@@ -76,6 +57,13 @@ $("#create_game").click(function () {
     );
   }
 });
+
+
+$("#Log_Out").click(function () {
+  document.cookie = "session=;path=/";
+  window.location.replace("/");
+});
+
 console.log(key);
 
 function sendRequest(adrees, data, callback) {

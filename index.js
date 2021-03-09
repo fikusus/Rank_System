@@ -131,74 +131,148 @@ app.post("/getgameslist", async (req, res) => {
 });
 
 app.post("/testConnection", async (req, res) => {
-  console.log(req.body.gameKey);
   if (req.body.gameKey) {
-    if (arrayOfGamesId.includes(req.body.gameKey)) {
-      res.send("OK");
-    } else {
-      sql.getGameByKey(req.body.gameKey, function (error, result) {
-        if (error) {
-          res.send('{"error":"Невнрный GameKey"}');
-        } else {
-          arrayOfGamesId.push(req.body.gameKey);
-          res.send(`{"result":"OK"}`);
-        }
-      });
-    }
+    checkGameKey(req.body.gameKey,function(result){
+      if(result){
+        res.send(`{"result":"OK"}`);
+      }else{
+        res.send('{"error":"Невнрный GameKey"}');
+      }
+    })
   } else {
     res.send('{"error":"GameKey Error"}');
   }
 });
 
-app.post("/registerClient", async (req, res) => {
-  console.log(req.body.gameKey);
-  if (req.body.gameKey) {
-    if (arrayOfGamesId.includes(req.body.gameKey)) {
-      if (
-        req.body.login &&
-        req.body.login !== "" &&
-        req.body.password !== null &&
-        req.body.password
-      ) {
-        sql.register(req.body.login, req.body.password, req.body.gameKey,function(error, result){
-          if (error) {
-            res.send(error);
-          } else {
-            res.send(`{"result":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
-          }
-        })
-      }else{
-        res.send('{"error":"Невнрные данные"}');
-      }
 
-    } else {
-      res.send('{"error":"Невнрный GameKey"}');
-    }
+function checkGameKey(gameKey, callback){
+  if (arrayOfGamesId.includes(gameKey)) {
+    return callback(true);
+  } else {
+    sql.getGameByKey(gameKey, function (error, result) {
+      console.log(error + " " + result)
+      if (error) {
+        return callback(false);
+      } else {       
+        arrayOfGamesId.push(gameKey);
+        return callback(true);
+      }
+    });
+  }
+}
+
+app.post("/registerClient", async (req, res) => {
+  if (req.body.gameKey) {
+    checkGameKey(req.body.gameKey,function(result){
+      if(result){
+        if (
+          req.body.login &&
+          req.body.login !== "" &&
+          req.body.password !== null &&
+          req.body.password
+        ) {
+          sql.register(req.body.login, req.body.password, req.body.gameKey,function(error, result){
+            if (error) {
+              res.send(`{"error":"${error}"}`);
+            } else {
+              res.send(`{"result":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
+            }
+          })
+        }else{
+          res.send('{"error":"Невнрные данные"}');
+        }
+  
+      }else{
+        res.send('{"error":"Невнрный GameKey"}');
+      }
+    })
+
   } else {
     res.send('{"error":"GameKey Error"}');
   }
 });
 
 app.post("/authClient", async (req, res) => {
-  console.log(req.body.gameKey);
   if (req.body.gameKey) {
-    if (arrayOfGamesId.includes(req.body.gameKey)) {
-      if (req.body.login && req.body.password) {
-        sql.auth(req.body.login, req.body.password,req.body.gameKey, function (error, results) {
-          if (error) {
-            res.send('{"error":"Логин/пароль неверние"}');
-          } else {
-            if (results.length === 0) {
+    checkGameKey(req.body.gameKey,function(result){
+      if(result){
+        if (req.body.login && req.body.password) {
+          sql.auth(req.body.login, req.body.password,req.body.gameKey, function (error, results) {
+            if (error) {
               res.send('{"error":"Логин/пароль неверние"}');
             } else {
-              res.send(`{"result":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
+              if (results.length === 0) {
+                res.send('{"error":"Логин/пароль неверние"}');
+              } else {
+                res.send(`{"result":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
+              }
             }
-          }
-        });
+          });
+        }
+      }else{
+        res.send('{"error":"Невнрный GameKey"}');
       }
-    } else {
-      res.send('{"error":"Невнрный GameKey"}');
-    }
+    })
+  } else {
+    res.send('{"error":"GameKey Error"}');
+  }
+
+});
+
+app.post("/sendData", async (req, res) => {
+  let gameKey = req.body.gameKey;
+  let sessionKey = req.body.sessionKey;
+  if (gameKey && sessionKey) {
+    checkGameKey(req.body.gameKey,function(result){
+      if(result){
+
+          let data = req.body;
+
+          delete data["gameKey"];
+          delete data["sessionKey"];
+          sql.insertPlayerData(gameKey,sessionKey,data, function(error, result){
+            if (error) {
+              res.send(`{"error":"${error}"}`);
+            } else {
+              res.send(`{"result":"OK"}`);
+            }
+          })
+          console.log(data);
+
+      }else{
+        res.send('{"error":"Невнрный GameKey"}');
+      }
+    })
+  } else {
+    res.send('{"error":"GameKey Error"}');
+  }
+
+});
+
+
+app.post("/getData", async (req, res) => {
+  let gameKey = req.body.gameKey;
+  let sessionKey = req.body.sessionKey;
+  let base = req.body.base;
+  console.log(req.body);
+
+  if (gameKey && sessionKey && base ) {
+    checkGameKey(req.body.gameKey,function(result){
+      if(result){
+          sql.getPlayerData(gameKey,sessionKey,base, function(error, result){
+            if (error) {
+              res.send(`{"error":"${error}"}`);
+            } else {
+              console.log(result);
+              res.send(result);
+            }
+          })
+
+
+      }else{
+        res.send('{"error":"Невнрный GameKey"}');
+      }
+    })
   } else {
     res.send('{"error":"GameKey Error"}');
   }
