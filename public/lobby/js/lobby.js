@@ -89,7 +89,8 @@ function updateGamesTable() {
       key: key,
     },
     function (result) {
-      if (result.length === 0) {
+      console.log(result);
+      if (result.length === 0 || result.error) {
         document.getElementById("gamelist").innerHTML = "<p>Тут ничего нет</p>";
       } else {
         let out = `<table id="customers">

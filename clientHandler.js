@@ -115,7 +115,7 @@ module.exports = function (app, sql, CryptoJS) {
                     res.send('{"error":"Логин/пароль неверние"}');
                   } else {
                       let sessionKey = CryptoJS.HmacSHA256(req.body.login, key);
-                      sql.getPlayerData(req.body.gameKey, sessionKey, "const_params", function(error, result){
+                      sql.getPlayerData(req.body.gameKey, sessionKey, function(error, result){
 
                         if (error) {
                             res.send(`{"error":"${error}"}`);
@@ -185,13 +185,75 @@ module.exports = function (app, sql, CryptoJS) {
           sql.getPlayerData(
             gameKey,
             sessionKey,
-            base,
             function (error, result) {
               if (error) {
                 res.send(`{"error":"${error}"}`);
               } else {
                 console.log(result);
                 res.send(result);
+              }
+            }
+          );
+        } else {
+          res.send('{"error":"Невнрный GameKey"}');
+        }
+      });
+    } else {
+      res.send('{"error":"GameKey Error"}');
+    }
+  });
+
+
+
+  app.post("/getRating", async (req, res) => {
+    let gameKey = req.body.gameKey;
+    let sessionKey = req.body.sessionKey;
+    let count = req.body.count;
+    console.log(req.body);
+
+    if (gameKey && sessionKey && count) {
+      checkGameKey(req.body.gameKey, function (result) {
+        if (result) {
+          sql.getRating(
+            gameKey,
+            sessionKey,
+            count,
+            function (error, result) {
+              if (error) {
+                res.send(`{"error":"${error}"}`);
+              } else {
+                console.log(result);
+                res.send(result);
+              }
+            }
+          );
+        } else {
+          res.send('{"error":"Невнрный GameKey"}');
+        }
+      });
+    } else {
+      res.send('{"error":"GameKey Error"}');
+    }
+  });
+
+  app.post("/setRating", async (req, res) => {
+    let gameKey = req.body.gameKey;
+    let sessionKey = req.body.sessionKey;
+    let rank = req.body.rank;
+    console.log(req.body);
+
+    if (gameKey && sessionKey && rank) {
+      checkGameKey(req.body.gameKey, function (result) {
+        if (result) {
+          sql.getRating(
+            gameKey,
+            sessionKey,
+            rank,
+            function (error, result) {
+              if (error) {
+                res.send(`{"error":"${error}"}`);
+              } else {
+                res.send(`{"result":"OK"}`);
               }
             }
           );

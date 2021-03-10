@@ -1,10 +1,9 @@
 var CryptoJS = require("crypto-js");
 var mysql = require("mysql");
 var connection = mysql.createConnection({
-  host     : '79.133.98.96',
-  user     : 'danil',
-  password : 'sayonara',
-  database : 'test'
+  host     : 'localhost',
+  user     : 'root',
+  database : 'marina'
 });
 
 let SQLErrorMgs = "Ошибка, поробуйте позже";
@@ -48,7 +47,8 @@ let sql = {
         login VARCHAR(128) PRIMARY KEY,
         password VARCHAR(128) NOT NULL,
         const_params JSON,
-        params JSON
+        params JSON,
+        rank DOUBLE
     )`;
     connection.query(sql_find_user, function (error, results, fields) {
       if (error) {
@@ -218,16 +218,16 @@ let sql = {
     });
   },
 
-  getPlayerData: (gameKey, sessionKey, base, callback) => {
-    var sql = `SELECT ${base} FROM ${gameKey} WHERE sessionkey = '${sessionKey}'`;
+  getPlayerData: (gameKey, sessionKey, callback) => {
+    var sql = `SELECT login, params, const_params, rank FROM ${gameKey} WHERE sessionkey = '${sessionKey}'`;
 
     connection.query(sql, function (error, results) {
       console.log(results);
       if (error && !results) {
         return callback(SQLErrorMgs, null);
       } else {
-        if (results[0][base]) {
-            return callback(null, results[0][base]);
+        if (results[0]) {
+            return callback(null, results[0]);
         } else {
           return callback(null, null);
         }
@@ -235,6 +235,52 @@ let sql = {
     });
   },
 
+  getRating: (gameKey, sessionKey, count, callback) => {
+    var sql = `SELECT r.login, rnk
+    FROM ${gameKey} u
+        JOIN (
+            SELECT  login,RANK() over (ORDER BY rank DESC ) rnk
+            from ${gameKey}) r
+        ON (u.login = r.login) WHERE rnk < ${count}
+    union
+    SELECT r.login, rnk
+    FROM ${gameKey} u
+        JOIN (
+            SELECT  sessionkey, login,RANK() over (ORDER BY rank DESC ) rnk
+            from ${gameKey}) r
+        ON (u.login = r.login) WHERE r.sessionkey = '${sessionKey}'`;
+
+        console.log(sql)
+    connection.query(sql, function (error, results) {
+      console.log(results);
+      if (error) {
+        return callback(SQLErrorMgs, null);
+      } else {
+        console.log(results);
+            return callback(null, results);
+      }
+    });
+  },
+  setRating: (gameKey, sessionKey, rank, callback) => {
+    var sql = `UPDATE ${gameKey} SET rank =  ${rank} WHERE sessionkey = '${sessionKey}'`;
+
+    connection.query(sql, function (error, results) {
+      console.log(results);
+      if (results) {
+        if (results.affectedRows === 1) {
+          return callback(null, "OK");
+        } else {
+          return callback("Пользователь не найден", null);
+        }
+      } else {
+        return callback(SQLErrorMgs, null);
+      }
+    });
+  },
+
+
 };
+
+
 
 module.exports = sql;
