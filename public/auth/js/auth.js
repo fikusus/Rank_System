@@ -19,7 +19,7 @@ document.getElementById("regbutton").onclick = function (event) {
       },
       success: function (result) {
         if (result.error === undefined) {
-          document.cookie = `session=${result.session}`;
+          document.cookie = `session=${result.result}`;
           window.location.replace("/lobby");
         } else {
           document.getElementById("error_msg").innerHTML = result.error;

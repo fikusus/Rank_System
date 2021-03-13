@@ -4,10 +4,7 @@ const port = 3000;
 var bodyParser = require("body-parser");
 var CryptoJS = require("crypto-js");
 const router = require("./router");
-const config = require('config');
-const sql = require("./sql");
-
-const key =  config.get("key");
+const sql = require("./sql2");
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(router);
@@ -15,114 +12,69 @@ app.use(bodyParser.json());
 app.use("/public", express.static("public"));
 require('./clientHandler')(app, sql,CryptoJS);
 
-
 app.post("/auth", async (req, res) => {
   if (req.body.login && req.body.password) {
-    sql.auth(req.body.login, req.body.password,"users", function (error, results) {
-      if (error) {
-        res.send('{"error":"Логин/пароль неверние"}');
-      } else {
-        if (results.length === 0) {
-          res.send('{"error":"Логин/пароль неверние"}');
-        } else {
-          res.send(`{"session":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
-        }
-      }
-    });
+    let result = await sql.auth(req.body.login, req.body.password, "users");
+    console.log(result);
+    res.send(result);
+  } else {
+    res.send(`{"error":"ER_INVALID_FIELDS"}`);
   }
 });
 
 app.post("/register", async (req, res) => {
-  if (
-    req.body.login &&
-    req.body.login !== "" &&
-    req.body.password !== null &&
-    req.body.password &&
-    req.body.psw_repeat !== null &&
-    req.body.psw_repeat &&
-    req.body.password === req.body.psw_repeat
-  ) {
-    sql.register(
-      req.body.login,
-      req.body.password,
-      "users",
-      null,
-      function (error, result) {
-        if (error) {
-          res.send(`{"error":"${error}"}`);
-        } else {
-          res.send(`{"session":"${CryptoJS.HmacSHA256(req.body.login, key)}"}`);
-        }
-      }
-    );
+  let login = req.body.login;
+  let password = req.body.password;
+  if (login && password) {
+    let result = await sql.register(login, password, "users", null);
+    res.send(result);
   } else {
-    res.send('{"error":"error"}');
+    res.send(`{"error":"ER_INVALID_FIELDS"}`);
   }
 });
 
 app.post("/chekUserSession", async (req, res) => {
   if (req.body.key) {
-    sql.getUserByKey(req.body.key, function (error, results) {
-      if (error) {
-        res.send(`{"error":"${error}"}`);
-      } else {
-        console.log(results);
-        res.send(results);
-      }
-    });
+    let result = await sql.getUserByKey(req.body.key);
+    res.send(result);
+  } else {
+    res.send(`{"error":"ER_INVALID_FIELDS"}`);
   }
 });
 
 app.post("/insertGame", async (req, res) => {
-  if (
-    req.body.name &&
-    req.body.name !== "" &&
-    req.body.key &&
-    req.body.key !== ""
-  ) {
-    sql.getUserByKey(req.body.key, function (error, results) {
-      if (error) {
-        res.send(`{"error":"${error}"}`);
-      } else {
-        sql.inesertGame(
-          results.login,
-          req.body.name,
-          function (error, result) {
-            if (error) {
-              res.send(`{"error":"${error}"}`);
-            } else {
-              res.send(`{"result":"${result}"}`);
-            }
-          }
-        );
-      }
-    });
+  let gameName = req.body.name;
+  let sessionKey = req.body.key
+  if (gameName, sessionKey) {
+
+    let user = await sql.getUserByKey(sessionKey);
+    if(!JSON.parse(user).error){
+      let result = await sql.inesertGame(user.login, gameName);
+      res.send(result);
+    }else{
+      res.send(user);
+    }
   } else {
-    res.send('{"error":"error"}');
+    res.send(`{"error":"ER_INVALID_FIELDS"}`);
   }
 });
 
 app.post("/getgameslist", async (req, res) => {
-  if (req.body.key) {
-    sql.getUserByKey(req.body.key, function (error, results) {
-      if (error) {
-        res.send(`{"error":"${error}"}`);
-      } else {
-        sql.getGameList(results.login, function (error, result) {
-          if (error) {
-            res.send(`{"error":"${error}"}`);
-          } else {
-            res.send(result);
-          }
-        });
-      }
-    });
+  let sessionKey = req.body.key
+  if (sessionKey) {
+
+    let user = await sql.getUserByKey(sessionKey);
+    if(!JSON.parse(user).error){
+      let result = await sql.getGameList(user.login);
+      res.send(result);
+    }else{
+      res.send(user);
+    }
   } else {
-    res.send('{"error":"error"}');
+    res.send(`{"error":"ER_INVALID_FIELDS"}`);
   }
 });
 
 app.listen(port, async () => {
   console.log(`Example app listening at http://localhost:${port}`);
 });
-

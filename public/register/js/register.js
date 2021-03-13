@@ -21,12 +21,11 @@ document.getElementById("regbutton").onclick = function (event) {
     dataType: "json",
     data: {
       login: $("#login").val(),
-      password: $("#password").val(),
-      psw_repeat: $("#psw-repeat").val(),
+      password: $("#password").val()
     },
     success: function (result) {
       if (result.error === undefined) {
-        document.cookie = `session=${result.session}`;
+        document.cookie = `session=${result.result}`;
         window.location.replace("/lobby");
       } else {
         document.getElementById("error_msg").innerHTML = result.error;

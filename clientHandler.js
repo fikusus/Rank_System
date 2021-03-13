@@ -1,209 +1,143 @@
-const { json } = require('body-parser');
+module.exports = async function (app, sql, CryptoJS) {
+  const config = require("config");
+  const key = config.get("key");
 
-module.exports = function (app, sql, CryptoJS) {
-    const config = require('config');
-    const key =  config.get("key");
+  let arrayOfGamesId = [];
 
-    let arrayOfGamesId = [];
+  let gameIdsList = await sql.getGameIdsList(function (error, result) {});
 
-    sql.getGameIdsList(function (error, result) {
-      if (!error && result) {
-        for (let i = 0; i < result.length; i++) {
-          arrayOfGamesId.push(result[i].id);
-        }
-        console.log(arrayOfGamesId);
-      }
-    });
-
-
+  if (!gameIdsList.error && gameIdsList) {
+    for (let i = 0; i < gameIdsList.length; i++) {
+      arrayOfGamesId.push(gameIdsList[i].id);
+    }
+    console.log(arrayOfGamesId);
+  }
 
   app.post("/testConnection", async (req, res) => {
     if (req.body.gameKey) {
-      checkGameKey(req.body.gameKey, function (result) {
-        if (result) {
-          res.send(`{"result":"OK"}`);
-        } else {
-          res.send('{"error":"Невнрный GameKey"}');
-        }
-      });
+      let result = await checkGameKey(req.body.gameKey);
+      res.send(result);
     } else {
-      res.send('{"error":"GameKey Error"}');
+      res.send(`{"error":"ER_INVALID_FIELDS"}`);
     }
   });
 
-  function checkGameKey(gameKey, callback) {
+  async function checkGameKey(gameKey) {
     if (arrayOfGamesId.includes(gameKey)) {
-      return callback(true);
+      return `{"result":"OK"}`;
     } else {
-      sql.getGameByKey(gameKey, function (error, result) {
-        console.log(error + " " + result);
-        if (error) {
-          return callback(false);
-        } else {
-          arrayOfGamesId.push(gameKey);
-          return callback(true);
-        }
-      });
+      let chekedGameKey = await sql.getGameByKey(gameKey);
+      if (!JSON.parse(chekedGameKey).error) {
+        arrayOfGamesId.push(gameKey);
+      }
+      return chekedGameKey;
     }
   }
 
   app.post("/registerClient", async (req, res) => {
     regData = req.body[0];
     userData = req.body[1];
-    console.log(req.body);
+    console.log(regData);
     if (regData.gameKey) {
-      checkGameKey(regData.gameKey, function (result) {
-        if (result) {
-          if (
-            regData.login &&
-            regData.login !== "" &&
-            regData.password !== null &&
-            regData.password
-          ) {
-            let ud = null;
-            if (userData) {
-              ud = `'${JSON.stringify(userData)}'`;
-            }
-            sql.register(
-              regData.login,
-              regData.password,
-              regData.gameKey,
-              ud,
-              function (error, result) {
-                if (error) {
-                  res.send(`{"error":"${error}"}`);
-                } else {
-                    if(userData){
-                        res.send(
-                            `{"result":"${CryptoJS.HmacSHA256(regData.login, key)}","useparams":${JSON.stringify(userData)}}`
-                          );
-                    }else{
-                        res.send(
-                            `{"result":"${CryptoJS.HmacSHA256(regData.login, key)}","useparams":null}`
-                          );
-                    }
-
-                }
-              }
-            );
-          } else {
-            res.send('{"error":"Невнрные данные"}');
+      let checkedUser = await checkGameKey(regData.gameKey);
+      console.log(checkedUser);
+      if (!JSON.parse(checkedUser).error) {
+        let login = regData.login;
+        let password = regData.password;
+        if (login && password) {
+          let ud = null;
+          if (userData) {
+            ud = `'${JSON.stringify(userData)}'`;
           }
+          let result = await sql.register(login, password, regData.gameKey, ud);
+
+          res.send(result);
         } else {
-          res.send('{"error":"Невнрный GameKey"}');
+          res.send(`{"error":"ER_INVALID_FIELDS"}`);
         }
-      });
+      } else {
+        res.send('{"error":"ER_INVALID_GAMEKEY"}');
+      }
     } else {
-      res.send('{"error":"GameKey Error"}');
+      res.send('{"error":"ER_INVALID_GAMEKEY"}');
     }
   });
 
   app.post("/authClient", async (req, res) => {
     if (req.body.gameKey) {
-      checkGameKey(req.body.gameKey, function (result) {
-        if (result) {
-          if (req.body.login && req.body.password) {
-            sql.auth(
-              req.body.login,
-              req.body.password,
+      let checkedUser = await checkGameKey(req.body.gameKey);
+      if (!JSON.parse(checkedUser).error) {
+        let login = req.body.login;
+        let password = req.body.password;
+        if (login && password) {
+          let result = await sql.auth(login, password, req.body.gameKey);
+          if (!JSON.parse(result).error) {
+            let sessionKey = JSON.parse(result).result;
+            let userInfo = await sql.getPlayerData(
               req.body.gameKey,
-              function (error, results) {
-                if (error) {
-                  res.send('{"error":"Логин/пароль неверние"}');
-                } else {
-                  if (results.length === 0) {
-                    res.send('{"error":"Логин/пароль неверние"}');
-                  } else {
-                      let sessionKey = CryptoJS.HmacSHA256(req.body.login, key);
-                      sql.getPlayerData(req.body.gameKey, sessionKey, function(error, result){
-
-                        if (error) {
-                            res.send(`{"error":"${error}"}`);
-                          } else {
-
-                            res.send(
-                                `{"result":"${sessionKey}","useparams":${JSON.stringify(result)}}`
-                              );
-                          }
-                      })
-
-                  }
-                }
-              }
+              sessionKey
             );
+            console.log(userInfo);
+            if (!JSON.parse(userInfo).error) {
+              res.send(`{"result":"${sessionKey}","useparams":${userInfo}}`);
+            } else {
+              res.send(result);
+            }
+          } else {
+            res.send(result);
           }
         } else {
-          res.send('{"error":"Невнрный GameKey"}');
+          res.send(`{"error":"ER_INVALID_FIELDS"}`);
         }
-      });
+      } else {
+        res.send('{"error":"ER_INVALID_GAMEKEY"}');
+      }
     } else {
-      res.send('{"error":"GameKey Error"}');
+      res.send('{"error":"ER_INVALID_GAMEKEY"}');
     }
   });
 
   app.post("/sendData", async (req, res) => {
-    let gameKey = req.body.gameKey;
-    let sessionKey = req.body.sessionKey;
+    verifyData = req.body[0];
+    userData = req.body[1].userData;
+    let gameKey = verifyData.gameKey;
+    let sessionKey = verifyData.sessionKey;
+    console.log(userData);
     if (gameKey && sessionKey) {
-      checkGameKey(req.body.gameKey, function (result) {
-        if (result) {
-          let data = req.body;
-
-          delete data["gameKey"];
-          delete data["sessionKey"];
-          sql.insertPlayerData(
-            gameKey,
-            sessionKey,
-            data,
-            function (error, result) {
-              if (error) {
-                res.send(`{"error":"${error}"}`);
-              } else {
-                res.send(`{"result":"OK"}`);
-              }
-            }
-          );
-          console.log(data);
-        } else {
-          res.send('{"error":"Невнрный GameKey"}');
-        }
-      });
+      let checkedUser = await checkGameKey(gameKey);
+      if (!JSON.parse(checkedUser).error) {
+        let result = await sql.insertPlayerData(
+          gameKey,
+          sessionKey,
+          verifyData.type,
+          userData
+        );
+        res.send(result);
+      } else {
+        res.send('{"error":"ER_INVALID_GAMEKEY"}');
+      }
     } else {
-      res.send('{"error":"GameKey Error"}');
+      res.send('{"error":"ER_INVALID_GAMEKEY"}');
     }
   });
 
   app.post("/getData", async (req, res) => {
     let gameKey = req.body.gameKey;
     let sessionKey = req.body.sessionKey;
-    let base = req.body.base;
     console.log(req.body);
 
-    if (gameKey && sessionKey && base) {
-      checkGameKey(req.body.gameKey, function (result) {
-        if (result) {
-          sql.getPlayerData(
-            gameKey,
-            sessionKey,
-            function (error, result) {
-              if (error) {
-                res.send(`{"error":"${error}"}`);
-              } else {
-                console.log(result);
-                res.send(result);
-              }
-            }
-          );
-        } else {
-          res.send('{"error":"Невнрный GameKey"}');
-        }
-      });
+    if (gameKey && sessionKey) {
+      let checkedUser = await checkGameKey(gameKey);
+      if (!JSON.parse(checkedUser).error) {
+        let result = await sql.getPlayerData(gameKey, sessionKey);
+        res.send(result);
+      } else {
+        res.send('{"error":"ER_INVALID_GAMEKEY"}');
+      }
     } else {
-      res.send('{"error":"GameKey Error"}');
+      res.send('{"error":"ER_INVALID_GAMEKEY"}');
     }
   });
-
-
 
   app.post("/getRating", async (req, res) => {
     let gameKey = req.body.gameKey;
@@ -211,58 +145,16 @@ module.exports = function (app, sql, CryptoJS) {
     let count = req.body.count;
     console.log(req.body);
 
-    if (gameKey && sessionKey && count) {
-      checkGameKey(req.body.gameKey, function (result) {
-        if (result) {
-          sql.getRating(
-            gameKey,
-            sessionKey,
-            count,
-            function (error, result) {
-              if (error) {
-                res.send(`{"error":"${error}"}`);
-              } else {
-                console.log(result);
-                res.send(result);
-              }
-            }
-          );
-        } else {
-          res.send('{"error":"Невнрный GameKey"}');
-        }
-      });
+    if (gameKey && sessionKey && count != null) {
+      let checkedUser = await checkGameKey(gameKey);
+      if (!JSON.parse(checkedUser).error) {
+        let result = await sql.getRating(gameKey, sessionKey,count);
+        res.send(result);
+      } else {
+        res.send('{"error":"ER_INVALID_GAMEKEY"}');
+      }
     } else {
-      res.send('{"error":"GameKey Error"}');
-    }
-  });
-
-  app.post("/setRating", async (req, res) => {
-    let gameKey = req.body.gameKey;
-    let sessionKey = req.body.sessionKey;
-    let rank = req.body.rank;
-    console.log(req.body);
-
-    if (gameKey && sessionKey && rank) {
-      checkGameKey(req.body.gameKey, function (result) {
-        if (result) {
-          sql.getRating(
-            gameKey,
-            sessionKey,
-            rank,
-            function (error, result) {
-              if (error) {
-                res.send(`{"error":"${error}"}`);
-              } else {
-                res.send(`{"result":"OK"}`);
-              }
-            }
-          );
-        } else {
-          res.send('{"error":"Невнрный GameKey"}');
-        }
-      });
-    } else {
-      res.send('{"error":"GameKey Error"}');
+      res.send('{"error":"ER_INVALID_GAMEKEY"}');
     }
   });
 };

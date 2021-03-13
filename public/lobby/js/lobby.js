@@ -7,6 +7,7 @@ if (key) {
       key: key,
     },
     function (result) {
+      console.log(result);
       if (result.error && !result.login) {
         document.cookie = "session=;path=/";
         window.location.replace("/");
