@@ -64,16 +64,16 @@ RankSystem.instanse.Auth(login, password, (msg, status) =>
 
   Данные отправляються в качестве JSON файлов. По этому для отправки собственных данних необходисо создать JObject и передать его как параметр функции SendData:
 
-```cs
-JObject jObject = new JObject();
-jObject["stringData"] = "Hello";
-jObject["intData"] = 404;
-jObject["boolData"] = true;
-RankSystem.instanse.SendData(jObject, (msg, status) =>
+  ```cs
+  JObject jObject = new JObject();
+  jObject["stringData"] = "Hello";
+  jObject["intData"] = 404;
+  jObject["boolData"] = true;
+  RankSystem.instanse.SendData(jObject, (msg, status) =>
   {
     //Ваши действия...
   });
-```
+  ```
 
 - Отправка рейтинга
 
@@ -102,9 +102,9 @@ RankSystem.instanse.SendData(jObject, (msg, status) =>
 
   Для состоаления рейтинга всех пользователей реализована функция GetRating, в которую необходимо передать количество необходимих записей. Если текущий пользователь не попадаєт в выборку он автоматически добавиться в конец списка вместе с местом в рейтинге.
 
-```cs
-RankSystem.instanse.GetRating(0, (msg, status) =>
-{
+  ```cs
+  RankSystem.instanse.GetRating(0, (msg, status) =>
+  {
     //Ваши действия...
-});
-```
+  });
+  ```
