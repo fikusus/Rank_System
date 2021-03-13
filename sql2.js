@@ -1,9 +1,10 @@
 var CryptoJS = require("crypto-js");
 var mysql = require("mysql2/promise");
 var connection = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  database: "marina",
+  host: (process.env.host)?process.env.host:"localhost",
+  user: (process.env.user)?process.env.user:"root",
+  password:(process.env.password)?process.env.password:"",
+  database: (process.env.database)?process.env.database:"marina",
 });
 
 let SQLErrorMgs = "ER_EXTERNAL_ERROR";
@@ -56,14 +57,14 @@ let sql = {
         return `{"error":"ER_NAME_IS_TAKEN"}`;
       } else {
         await connection.query(sql_insert_user);
-        return `{"result":"OK"}`;
+        return `{"result":"${CryptoJS.HmacSHA256(login, key)}"}`;
       }
     } catch (err) {
       if (err.code === "ER_NO_SUCH_TABLE") {
         try {
           await connection.query(sql_create_user_table);
           await connection.query(sql_insert_user);
-          return `{"result":"OK"}`;
+          return `{"result":"${CryptoJS.HmacSHA256(login, key)}"}`;
         } catch (err) {
           return `{"error":"${SQLErrorMgs}"}`;
         }
@@ -128,7 +129,7 @@ let sql = {
 
   getGameList: async (login) => {
     var sql = `SELECT name, id  FROM games WHERE login = '${login}';`;
-    console.log("rows");
+    console.log(sql);
     try {
       const rows = await connection.query(sql);
       return rows[0];

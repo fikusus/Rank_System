@@ -47,12 +47,14 @@ app.post("/insertGame", async (req, res) => {
   let sessionKey = req.body.key
   if (gameName, sessionKey) {
 
-    let user = await sql.getUserByKey(sessionKey);
-    if(!JSON.parse(user).error){
+    let userSql = await sql.getUserByKey(sessionKey);
+    let user = JSON.parse(userSql)
+    if(!user.error){
+      console.log("user:" + userSql);
       let result = await sql.inesertGame(user.login, gameName);
       res.send(result);
     }else{
-      res.send(user);
+      res.send(`{"error":"ER_INVALID_SESSION"}`);
     }
   } else {
     res.send(`{"error":"ER_INVALID_FIELDS"}`);
@@ -63,12 +65,13 @@ app.post("/getgameslist", async (req, res) => {
   let sessionKey = req.body.key
   if (sessionKey) {
 
-    let user = await sql.getUserByKey(sessionKey);
-    if(!JSON.parse(user).error){
+    let userSql = await sql.getUserByKey(sessionKey);
+    let user = JSON.parse(userSql)
+    if(!user.error){
       let result = await sql.getGameList(user.login);
       res.send(result);
     }else{
-      res.send(user);
+      res.send(`{"error":"ER_INVALID_SESSION"}`);
     }
   } else {
     res.send(`{"error":"ER_INVALID_FIELDS"}`);
