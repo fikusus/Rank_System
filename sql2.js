@@ -1,12 +1,13 @@
+var md5 = require('md5');
 var CryptoJS = require("crypto-js");
 var mysql = require("mysql2/promise");
 var connection = mysql.createPool({
-  host: (process.env.host)?process.env.host:"localhost",
-  user: (process.env.user)?process.env.user:"root",
-  password:(process.env.password)?process.env.password:"",
-  database: (process.env.database)?process.env.database:"marina",
+  host: process.env.host ? process.env.host : "localhost",
+  user: process.env.user ? process.env.user : "root",
+  password: process.env.password ? process.env.password : "",
+  database: process.env.database ? process.env.database : "marina",
 });
-
+var randomstring = require("randomstring");
 let SQLErrorMgs = "ER_EXTERNAL_ERROR";
 
 const config = require("config");
@@ -49,10 +50,8 @@ let sql = {
         params JSON,
         rating DOUBLE
     )`;
-
     try {
       const rows = await connection.query(sql_find_user);
-      console.log(rows[0][0].solution);
       if (rows[0][0].solution) {
         return `{"error":"ER_NAME_IS_TAKEN"}`;
       } else {
@@ -78,7 +77,6 @@ let sql = {
     var sql = `SELECT login, params  FROM users WHERE sessionkey = '${sessionkey}';`;
     try {
       const rows = await connection.query(sql);
-      console.log(rows[0]);
       if (rows[0].length) {
         return JSON.stringify(rows[0][0]);
       } else {
@@ -91,21 +89,19 @@ let sql = {
 
   inesertGame: async (login, name) => {
     let sql_find_game = `SELECT COUNT(*) as solution FROM games where login = '${login}' AND name = '${name}';`;
-    let sql_insert_game = `INSERT INTO games  values ('${login}','${name}' ,'${CryptoJS.HmacSHA256(
-      login + name,
-      key
-    )}')`;
+    let sql_insert_game = `INSERT INTO games  values ('${login}','${name}' ,'${'g' + md5(login + name)}','${randomstring.generate(32)}','${randomstring.generate(16)}')`;
 
     let sql_create_game_table = `CREATE TABLE games (
       login VARCHAR(128),
       name VARCHAR(128),
       id VARCHAR(128) PRIMARY KEY,
+      security VARCHAR(32),
+      iv VARCHAR(16)
       CONSTRAINT UC_Person UNIQUE (login,name)
   )`;
 
     try {
       const rows = await connection.query(sql_find_game);
-      console.log(rows[0][0].solution);
       if (rows[0][0].solution) {
         return `{"error":"ER_NAME_IS_TAKEN"}`;
       } else {
@@ -128,8 +124,7 @@ let sql = {
   },
 
   getGameList: async (login) => {
-    var sql = `SELECT name, id  FROM games WHERE login = '${login}';`;
-    console.log(sql);
+    var sql = `SELECT name, id,security, iv FROM games WHERE login = '${login}';`;
     try {
       const rows = await connection.query(sql);
       return rows[0];
@@ -138,25 +133,35 @@ let sql = {
     }
   },
 
-  getGameIdsList: async() => {
-    var sql = `SELECT  id  FROM games;`;
+  getGameIdsList: async () => {
+    var sql = `SELECT  id,security, iv  FROM games;`;
 
     try {
       const rows = await connection.query(sql);
+      for (let i = 0; i < rows[0].length; i++) {
+        if (!rows[0][i].security) {
+          sec = randomstring.generate(32);
+          iv = randomstring.generate(16);
+          var insert_security = `UPDATE games set security = '${sec}', iv = '${iv}'  WHERE id = '${rows[0][i].id}';`;
+          rows[0][i].security = sec;
+          rows[0][i].iv = iv;
+          await connection.query(insert_security);
+        }
+      }
       return rows[0];
     } catch (err) {
       return `{"error":"${SQLErrorMgs}"}`;
     }
-
   },
 
-  getGameByKey: async(id) => {
-    var sql = `SELECT *  FROM games WHERE id = '${id}';`;
+  getGameByKey: async (id) => {
+    var sql = `SELECT id, security, iv  FROM games WHERE id = '${id}';`;
     try {
       const rows = await connection.query(sql);
-      if(rows[0].length){
-        return `{"result":"OK"}`;
-      }{
+      if (rows[0].length) {
+        return `{"result":${JSON.stringify(rows[0][0])}}`;
+      }
+      {
         return `{"error":"ER_INVALID_GAMEKEY"}`;
       }
     } catch (err) {
@@ -164,24 +169,23 @@ let sql = {
     }
   },
 
-  getPlayerData: async(gameKey, sessionKey) => {
+  getPlayerData: async (gameKey, sessionKey) => {
     var sql = `SELECT login, params, const_params, rating FROM ${gameKey} WHERE sessionkey = '${sessionKey}'`;
     try {
       const rows = await connection.query(sql);
-      if(rows[0].length){
+      if (rows[0].length) {
         return JSON.stringify(rows[0][0]);
-      }{
+      }
+      {
         return `{"useparams":"${null}"}`;
       }
     } catch (err) {
       return `{"error":"${SQLErrorMgs}"}`;
     }
-
   },
 
-  insertPlayerData:  async(gameKey, sessionKey,field, data) => {
+  insertPlayerData: async (gameKey, sessionKey, field, data) => {
     var sql = `UPDATE ${gameKey} SET ${field} = ${data} WHERE sessionkey = '${sessionKey}'`;
-    console.log(sql);
     try {
       const rows = await connection.query(sql);
       if (rows[0]) {
@@ -199,25 +203,25 @@ let sql = {
   },
 
   getRating: async (gameKey, sessionKey, count) => {
-    var sql = `SELECT r.login, position, rating
+    var sql = `SELECT r.login, position, rating,const_params
     FROM ${gameKey} u
         JOIN (
             SELECT  login,RANK() over (ORDER BY rating DESC ) position
             from ${gameKey}) r
         ON (u.login = r.login) WHERE position < ${count}
     union
-    SELECT r.login, position, rating
+    SELECT r.login, position, rating,const_params
     FROM ${gameKey} u
         JOIN (
             SELECT  sessionkey, login,RANK() over (ORDER BY rating DESC ) position
             from ${gameKey}) r
         ON (u.login = r.login) WHERE r.sessionkey = '${sessionKey}' order by position`;
-        try {
-          const rows = await connection.query(sql);
-          return `{"result" "${JSON.stringify(rows[0])}"}`;
-        } catch (err) {
-          return `{"error":"${SQLErrorMgs}"}`;
-        }
+    try {
+      const rows = await connection.query(sql);
+      return `{"result" : ${JSON.stringify(rows[0])}}`;
+    } catch (err) {
+      return `{"error":"${SQLErrorMgs}"}`;
+    }
   },
 };
 

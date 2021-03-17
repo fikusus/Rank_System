@@ -98,12 +98,14 @@ function updateGamesTable() {
         <tr>
           <th>Name</th>
           <th>ID</th>
+          <th>Crypt(do not transfer this data to anyone!!)</th>
           <th>Action</th>
         </tr>`;
         for (let i = 0; i < result.length; i++) {
           out += `<tr>`;
           out += `    <td>${result[i].name}</td>
           <td>${result[i].id}</td>
+          <td>SecyrityKey:<b>${result[i].security}</b><br>IV:<b>${result[i].iv}</b></td>
           <td></td>`;
           out += `</tr>`;
         }
